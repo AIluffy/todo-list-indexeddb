@@ -11,7 +11,7 @@
 				<ul class="todo-list">
 					<li class="todo" v-for="todo in filteredTodos" :key="todo.id" :class="{completed: todo.completed, editing: todo == editedTodo}">
 						<div class="view">
-							<input class="toggle" type="checkbox" v-model="todo.completed">
+							<input class="toggle" type="checkbox" v-model="todo.completed" @click="changeTodoStatus(todo)">
 							<label @dblclick="editTodo(todo)">{{todo.title}}</label>
 							<button class="destroy" @click="removeTodo(todo)"></button>
 						</div>
@@ -61,12 +61,6 @@ export default {
       visibility: 'all'
     }
   },
-  // watch: {
-  //   todos: {
-  //     deep: true,
-  //     handler: todoStorage.save
-  //   }
-  // },
   computed: {
     filteredTodos() {
       return filters[this.visibility](this.todos);
@@ -79,8 +73,16 @@ export default {
         return this.remaining === 0;
       },
       set: function(val) {
-        this.todos.forEach((todo) => {
-          todo.completed = val
+        Promise.all(
+          this.todos.map((item) => {
+            item.completed = val
+
+            return dbOper.add(item)
+          })
+        ).then(() => {
+          this.todos.forEach((todo) => {
+            todo.completed = val
+          })
         })
       }
     }
@@ -88,6 +90,15 @@ export default {
   methods: {
     pluralize(word, count) {
       return word + (count === 1 ? '' : 's')
+    },
+    changeTodoStatus(todo) {
+      const { id, title, completed } = todo
+
+      dbOper.add({
+        id,
+        title,
+        completed: !completed
+      })
     },
     addTodo() {
       const value = this.newTodo && this.newTodo.trim()
